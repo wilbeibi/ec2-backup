@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-# add try exception
+
 '''
 Create an instance
 '''
@@ -19,10 +19,6 @@ region = 'us-east-1'
 verbose = False
 
 
-
-if 'EC2_BACKUP_VERBOSE' in os.environ:
-    verbose = True
-
 dict_ins={'image-id':          'ami-3b361952', # Fedora as default
           'instance-type':     't1.micro',
           'key-name':          'stevens',
@@ -40,22 +36,30 @@ def attach():
                                       aws_access_key_id=key_id,
                                       aws_secret_access_key=secret_key)
 
-    print conn
+    if(verbose):
+        print 'Connect to region: ' + region
 
     reservations = conn.run_instances(
         image_id=dict_ins['image-id'],           
         key_name=dict_ins['key-name'],
         instance_type=dict_ins['instance-type'],
         security_groups=dict_ins['security-groups'])
-
+        
     ins = reservations[0].instances[0]
-    
-    
-    vol = conn.create_volume(2, ins.placement);
-    print vol.id;
-    conn.attach_volume(vol.id, ins.id ,"/dev/sdx") 
 
+    if(verbose):
+        print 'Running instance ' + str(ins.id)
+    
+    vol = conn.create_volume(2, ins.placement)
 
+    if(verbose):
+        print 'Create volume ' + str(vol.id)
+
+    dest = "/dev/sdx"
+    conn.attach_volume(vol.id, ins.id , dest) 
+
+    if(verbose):
+        print 'Attached volume %s to %s' %(vol.id, dest)
 
 def parse_config():
     """
@@ -111,13 +115,15 @@ def parse_AWS():
         else:
             assert False, "unhanded option: " + o
 
+    if 'EC2_BACKUP_VERBOSE' in os.environ:
+        global verbose = True
+
   
     
 if __name__ == '__main__':
-    # attach()
-    #parse_AWS()
+    parse_AWS()
     parse_config()
-
+    attach()
 
 
 
