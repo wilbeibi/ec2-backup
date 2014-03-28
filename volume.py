@@ -28,7 +28,7 @@ dict_aws={'key_id':            '',
           'secret_key':        '',
           'region':            'us-east-1'}
 
-def attach():
+def attach(volume_id=None):
     """
     Attach volume
     """
@@ -49,17 +49,23 @@ def attach():
 
     if(verbose):
         print 'Running instance ' + str(ins.id)
-    
-    vol = conn.create_volume(2, ins.placement)
+
+        
+    if(volume_id=None):
+        vol = conn.create_volume(2, ins.placement) # change size
+        volume_id = vol.id
+        
 
     if(verbose):
-        print 'Create volume ' + str(vol.id)
+        print 'Create volume ' + str(volume_id)
 
     dest = "/dev/sdx"
-    conn.attach_volume(vol.id, ins.id , dest) 
+    conn.attach_volume(volume_id, ins.id , dest) 
 
     if(verbose):
-        print 'Attached volume %s to %s' %(vol.id, dest)
+        print 'Attached volume %s to %s' %(volume_id, dest)
+
+    # creat, attach, format, mount
 
 def parse_config():
     """
@@ -101,29 +107,26 @@ def parse_AWS():
         
     for o, a in opts:
         if o in ("-k", "--key-name"):
-            #print "--key-name",a
             dict_ins['key-name'] = a
         elif o in ("-g", "--security-groups"):
-            #print "security-groups",a
             dict_ins['security-groups'] = a
         elif o in ("-i", "--image-id"):
-            #print "image-id",a
             dict_ins['image-id'] = a
         elif o in ("-t", "--instance-type"):
-            #print "instance-type",a
             dict_ins['instance-type'] = a
         else:
             assert False, "unhanded option: " + o
 
     if 'EC2_BACKUP_VERBOSE' in os.environ:
-        global verbose = True
+        global verbose
+        verbose = True
 
   
     
-if __name__ == '__main__':
-    parse_AWS()
-    parse_config()
-    attach()
+# if __name__ == '__main__':
+#     parse_AWS()
+#     parse_config()
+#     attach()
 
 
 
