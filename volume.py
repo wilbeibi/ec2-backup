@@ -74,7 +74,16 @@ def attach(volume_id=None):
 
     dest = "/dev/sdx"
     
-    conn.attach_volume(volume_id, ins.id , dest) 
+    if conn.attach_volume(volume_id, ins.id , dest) == False:
+        print 'attach failed'
+        sys.exit(1)
+
+    status = vol.update()
+    while status != 'attached':
+        print 'wating for attach, current status: ' + str(status)
+        time.sleep(5)
+        status = vol.update()
+    
 
     if(verbose):
         print 'Attached volume %s to %s' %(volume_id, dest)
