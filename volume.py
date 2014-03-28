@@ -1,18 +1,14 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-'''
-Create an instance
-'''
-
 
 
 import sys
-# sys.path.insert(0, '/opt/boto/lib/python2.7/site-packages/boto-2.27.0-py2.7.egg')
+sys.path.insert(0, '/opt/boto/lib/python2.7/site-packages/boto-2.27.0-py2.7.egg')
 import os
 import boto.ec2
 import getopt
-
+import time
 key_id = 'AKIAIPID4EFXEK4RHUXA'
 secret_key = '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'
 region = 'us-east-1'
@@ -29,6 +25,7 @@ dict_aws={'key_id':            '',
           'region':            'us-east-1'}
 
 def attach(volume_id=None):
+    print 'Attach'
     """
     Attach volume
     """
@@ -43,34 +40,53 @@ def attach(volume_id=None):
         image_id=dict_ins['image-id'],           
         key_name=dict_ins['key-name'],
         instance_type=dict_ins['instance-type'],
-        security_groups=dict_ins['security-groups'])
+        security_groups=[dict_ins['security-groups']])
         
-    ins = reservations[0].instances[0]
+    ins = reservations.instances[0]  # reservations[0]
 
+    # while ins.status is not "running":
+    #     print 'wating for running, current status: ' + str(ins.status)
+    status = ins.update()
+
+    while status != 'running':
+        print 'wating for running, current status: ' + str(status)
+        time.sleep(10)
+        status = ins.update()
+        
+    
     if(verbose):
-        print 'Running instance ' + str(ins.id)
+        print 'Running instance %s, key %s, group %s '% ( str(ins.id), dict_ins['key-name'], dict_ins['security-groups'])
 
         
-    if(volume_id=None):
+    if volume_id is None:
         vol = conn.create_volume(2, ins.placement) # change size
         volume_id = vol.id
-        
+        print 'Create volume: ' + str(volume_id)
+
+    status = vol.update()
+    while status != 'available':
+        print 'wating for available, current status: ' + str(status)
+        time.sleep(5)
+        status = vol.update()
 
     if(verbose):
         print 'Create volume ' + str(volume_id)
 
     dest = "/dev/sdx"
+    
     conn.attach_volume(volume_id, ins.id , dest) 
 
     if(verbose):
         print 'Attached volume %s to %s' %(volume_id, dest)
 
+    return ins.ip_address, dest
     # creat, attach, format, mount
 
 def parse_config():
     """
     parse EC2_CONFIG_FILE, retrive aws_access_key_id and aws_secret_acess_key
     """
+    print 'parse config'
     try:
         aws_conf = os.environ['AWS_CONFIG_FILE']
     except KeyError:
@@ -95,6 +111,7 @@ def parse_AWS():
     """
     parse EC2_BACKUP_FLAGS_AWS, which determines the details of instance
     """
+    print 'parse AWS'
     try:
         ins_conf = os.environ['EC2_BACKUP_FLAGS_AWS']
     except KeyError:
@@ -107,12 +124,16 @@ def parse_AWS():
         
     for o, a in opts:
         if o in ("-k", "--key-name"):
+            print 'key-name ' + a
             dict_ins['key-name'] = a
         elif o in ("-g", "--security-groups"):
+            print 'security-groups ' + a
             dict_ins['security-groups'] = a
         elif o in ("-i", "--image-id"):
+            print 'image id ' + a
             dict_ins['image-id'] = a
         elif o in ("-t", "--instance-type"):
+            print 'instance type ' + a
             dict_ins['instance-type'] = a
         else:
             assert False, "unhanded option: " + o
@@ -123,10 +144,12 @@ def parse_AWS():
 
   
     
-# if __name__ == '__main__':
-#     parse_AWS()
-#     parse_config()
-#     attach()
+if __name__ == '__main__':
+    print 'Start'
+    parse_AWS()
+    parse_config()
+    ip, dest = attach()
+    print ip, dest
 
 
 
