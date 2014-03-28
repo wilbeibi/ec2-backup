@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+# switch == != to is , is not
+# switch '' to ""
 
 
 import sys
@@ -151,14 +153,33 @@ def parse_AWS():
         global verbose
         verbose = True
 
+def parse_SSH():
+    """
+    parse ssh option,get private key
+    
+    """
+    # try:
+    #     ssh_conf = os.environ['EC2_BACKUP_FLAGS_SSH']
+    # except KeyError:
+    #     print "Environment variable EC2_BACKUP_FLAGS_SSH not set yet."
+    #     sys.exit(1)
+    
+    ssh_conf = "-i ~/.ssh/ec2-key"
+    lt = ssh_conf.split()
+    if lt[0] == "-i":
+        return lt[1]
+    else:
+        print 'Unrecognized option'
+        sys.exit(1)
   
     
 if __name__ == '__main__':
-    print 'Start'
-    parse_AWS()
-    parse_config()
-    ip, dest = attach()
-    print ip, dest
+    # print 'Start'
+    # parse_AWS()
+    # parse_config()
+    # ip, dest = attach()
+    # print ip, dest
+    print parse_SSH()
 
 
 
