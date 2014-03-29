@@ -1,8 +1,9 @@
-import os
+import os, sys
 from subprocess import Popen, PIPE
 from time import gmtime, strftime
 
-devnull=open(os.devnull, 'w')
+# devnull=open(os.devnull, 'w')
+devnull=sys.stdout
 
 def get_path(src):
     if src==None:
@@ -18,14 +19,27 @@ def get_destname(dir):
     return '%s_backup_%s'%(dir, strftime("%d_%b_%Y_%H_%M_%S", gmtime()))
 
 def get_size(path='/'):
-    p=Popen(['du', '-sb', path],
-             stdout=PIPE,
-             stderr=PIPE)
+    p=Popen(['du', '-sb', path], stdout=PIPE, stderr=PIPE)
     r=p.wait()
     if r!=0:
         print p.stderr.read()
         return -1
     return int(p.stdout.read().split('\t')[0])
+
+def mkfs_device(dev, rid, user, key=None):
+
+    key =get_path(key)
+    args=['ssh', '-t', '%s@%s'%(user, rid),
+          'sudo', 'mkfs', '-t', 'ext4', dev]
+    if key!=None:
+        args.insert(1, '%s'%(key))
+        args.insert(1, '-i')
+
+    p=Popen(args, stdout=devnull, stderr=PIPE)
+    r=p.wait()
+    if r!=0:
+        print p.stderr.read()
+    return r
 
 ##
 # mount a EBS device onto file system
@@ -35,20 +49,29 @@ def get_size(path='/'):
 # o
 # mnt_path - mounted path
 ##
-def mount_device(mnt_path, dev, rid, user, key=None):
+def mount_device(dev, rid, user, key=None):
 
-    args=['ssh', 
-          '%s@%s'%(user, rid),
-          'mount',
-          '-t', 'ext4',
-           dev, mnt_path]
+    key     =get_path(key)
+    mnt_path='~/backup_mnt'
+    args    =['ssh', '%s@%s'%(user, rid),
+              'mkdir', mnt_path]
     if key!=None:
         args.insert(1, '%s'%(key))
         args.insert(1, '-i')
 
-    p=Popen(args, 
-            stdout=devnull,
-            stderr=PIPE)
+    p=Popen(args, stdout=devnull, stderr=PIPE)
+    r=p.wait()
+    if r!=0:
+        print p.stderr.read()
+        return ''
+
+    args=['ssh', '-t', '%s@%s'%(user, rid),
+          'sudo', 'mount', '-t', 'ext4', dev, mnt_path]
+    if key!=None:
+        args.insert(1, '%s'%(key))
+        args.insert(1, '-i')
+
+    p=Popen(args, stdout=devnull, stderr=PIPE)
     r=p.wait()
     if r!=0:
         print p.stderr.read()
@@ -72,23 +95,28 @@ def do_rsync(src, dest, rid, user, key=None):
     key      =get_path(key)
     dir_name =get_basename(src)
     dest_name=get_destname(dir_name)
-    args     =['rsync',
-               '-arz',
-               '-e',
-               'ssh' if key==None else \
-               'ssh -i %s'%(key),
-                src,
-               '%s@%s:%s/%s'%(user, rid, dest, dest_name)]
-
-    p=Popen(args,
-            stdout=devnull,
-            stderr=PIPE)
-
-    r=p.wait()
+    args     =['rsync', '-ar',
+               '-e', 'ssh' if key==None else 'ssh -i %s'%(key),
+                src, '%s@%s:~/%s'%(user, rid, dest_name)]
+    print args
+    p1=Popen(args, stdout=devnull, stderr=PIPE)
+    r=p1.wait()
     if r!=0:
         print p.stderr.read()
-        return r
-    return 0
+	return r
+    
+    args=['ssh', '-t', '%s@%s'%(user, rid),
+          'sudo', 'mv', '~/%s'%(dest_name), '%s'%(dest)]
+    if key!=None:
+        args.insert(1, '%s'%(key))
+        args.insert(1, '-i')
+
+    print args
+    p2=Popen(args, stdout=devnull, stderr=PIPE)
+    r=p2.wait()
+    if r!=0:
+        print p.stderr.read()
+    return r
 
 ##
 # tarNdd backup to the cloud
@@ -110,45 +138,43 @@ def do_tarNdd(src, dest, rid, user, key=None):
     tmp_path ='/tmp/%s'%(dest_name)
     option   ='cf'
 
-    p=Popen(['tar',
-             option,
-             tmp_path,
-             src],
-             stdout=devnull,
-             stderr=PIPE)
-
+    p=Popen(['tar', option, tmp_path, src],
+              stdout=devnull, stderr=PIPE)
     r=p.wait()
     if r!=0:
         os.remove(tmp_path)
         print p.stderr.read()
         return r
 
-    args=['ssh', 
-          '%s@%s'%(user, rid),
-          'dd',
-          'of=%s/%s'%(dest, dest_name)]
+    args=['ssh', '%s@%s'%(user, rid),
+          'dd', 'of=~/%s'%(dest_name)]
     if key!=None:
         args.insert(1, '%s'%(key))
         args.insert(1, '-i')
 
-    p1=Popen(['dd', 'if=%s'%tmp_path],
-             stdout=PIPE,
-             stderr=PIPE)
-    p2=Popen(args, 
-             stdin=p1.stdout,
-             stdout=devnull,
-             stderr=PIPE)
+    p1=Popen(['dd', 'if=%s'%tmp_path], stdout=PIPE, stderr=PIPE)
+    p2=Popen(args, stdin=p1.stdout, stdout=devnull, stderr=PIPE)
     p1.stdout.close() # http://hg.python.org/cpython/rev/abab2c53f58f/
 
+    args=['ssh', '-t', '%s@%s'%(user, rid),
+          'sudo', 'mv', '~/%s'%(dest_name), '%s'%(dest)]
+    if key!=None:
+        args.insert(1, '%s'%(key))
+        args.insert(1, '-i')
+
+    p3=Popen(args, stdout=devnull, stderr=PIPE)
     r=p1.wait()
     if r!=0:
         os.remove(tmp_path)
         print p1.stderr.read()
         return r
     r=p2.wait()
-
-    os.remove(tmp_path)
     if r!=0:
+        os.remove(tmp_path)
         print p2.stderr.read()
         return r
-    return 0
+    r=p3.wait()
+    if r!=0:
+        print p3.stderr.read()
+    os.remove(tmp_path)
+    return r

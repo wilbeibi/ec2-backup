@@ -5,6 +5,7 @@
 # switch '' to ""
 
 
+import worker
 import sys
 sys.path.insert(0, '/opt/boto/lib/python2.7/site-packages/boto-2.27.0-py2.7.egg')
 import os
@@ -15,9 +16,10 @@ key_id = 'AKIAIPID4EFXEK4RHUXA'
 secret_key = '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'
 region = 'us-east-1'
 verbose = False
+ins = None
 
 
-dict_ins={'image-id':          'ami-3b361952', # Fedora as default
+dict_ins={'image-id':          'ami-3b361952', # Ubuntu as default
           'instance-type':     't1.micro',
           'key-name':          'stevens',
           'security-groups':   'default'}
@@ -31,6 +33,8 @@ def attach(volume_id=None):
     """
     Attach volume
     """
+    global ins
+
     conn = boto.ec2.connect_to_region(region,
                                       aws_access_key_id=key_id,
                                       aws_secret_access_key=secret_key)
@@ -64,33 +68,32 @@ def attach(volume_id=None):
         vol = conn.create_volume(2, ins.placement) # change size
         volume_id = vol.id
         print 'Create volume: ' + str(volume_id)
-
-    status = vol.update()
-    while status != 'available':
-        print 'wating for available, current status: ' + str(status)
-        time.sleep(5)
-        status = vol.update()
+	status = vol.update()
+	while status != 'available':
+	    print 'wating for available, current status: ' + str(status)
+	    time.sleep(5)
+	    status = vol.update()
 
     if(verbose):
-        print 'Create volume ' + str(volume_id)
+        print 'Attach volume ' + str(volume_id)
 
-    dest = "/dev/sdx"
+    dest = "/dev/sdz"
     
     if conn.attach_volume(volume_id, ins.id , dest) == False:
         print 'attach failed'
         sys.exit(1)
 
-    status = vol.update()
-    while status != 'attached':
-        print 'wating for attach, current status: ' + str(status)
-        time.sleep(5)
-        status = vol.update()
+    # status = vol.update()
+    # while status != 'in-use':
+    #     print 'wating for attach, current status: ' + str(status)
+    #     time.sleep(5)
+    #     status = vol.update()
     
 
     if(verbose):
         print 'Attached volume %s to %s' %(volume_id, dest)
 
-    return ins.ip_address, dest
+    return ins.ip_address, '/dev/xvdz'
     # creat, attach, format, mount
 
 def parse_config():
@@ -158,13 +161,12 @@ def parse_SSH():
     parse ssh option,get private key
     
     """
-    # try:
-    #     ssh_conf = os.environ['EC2_BACKUP_FLAGS_SSH']
-    # except KeyError:
-    #     print "Environment variable EC2_BACKUP_FLAGS_SSH not set yet."
-    #     sys.exit(1)
+    try:
+        ssh_conf = os.environ['EC2_BACKUP_FLAGS_SSH']
+    except KeyError:
+        print "Environment variable EC2_BACKUP_FLAGS_SSH not set yet."
+        sys.exit(1)
     
-    ssh_conf = "-i ~/.ssh/ec2-key"
     lt = ssh_conf.split()
     if lt[0] == "-i":
         return lt[1]
@@ -174,19 +176,17 @@ def parse_SSH():
   
     
 if __name__ == '__main__':
-    # print 'Start'
-    # parse_AWS()
-    # parse_config()
-    # ip, dest = attach()
-    # print ip, dest
-    print parse_SSH()
-
-
-
-
-
-
-
-
-
-
+    print 'Start'
+    parse_AWS()
+    parse_config()
+    key=parse_SSH()
+    ip, dest = attach()
+    r=worker.mkfs_device(dest, ip, 'fedora', key)
+    print r
+    mnt_path=worker.mount_device(dest, ip, 'fedora', key)
+    print mnt_path
+    # r=worker.do_tarNdd('.', mnt_path, ip, 'fedora', key)
+    r=worker.do_rsync('.', mnt_path, ip, 'fedora', key)
+    print r
+    if ins is not None:
+        ins.terminate()
