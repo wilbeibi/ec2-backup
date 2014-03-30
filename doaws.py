@@ -24,9 +24,9 @@ dict_ins={'image-id':          'ami-3b361952', # Ubuntu as default
           'key-name':          'stevens',
           'security-groups':   'default'}
 
-dict_aws={'key_id':            '',
-          'secret_key':        '',
-          'region':            'us-east-1'}
+dict_aws={'key_id':            "",
+          'secret_key':        "",
+          'region':            "us-east-1"}
 
 def attach(volume_id=None):
     print 'Attach'
@@ -34,10 +34,25 @@ def attach(volume_id=None):
     Attach volume
     """
     global ins
+
+
+    print 'Verbose ' + str(verbose)
+    print 'region '  + dict_aws['region'] + ' type:'
+    print type( dict_aws['region'])
+    print 'key_id ' + dict_aws['key_id'] + ' type:'
+    print type( dict_aws['key_id'] )
+    print 'secret ' + dict_aws['secret_key'] + ' type:'
+    print type( dict_aws['secret_key'])
  
     conn = boto.ec2.connect_to_region(dict_aws['region'],
                                       aws_access_key_id=dict_aws['key_id'],
-                                      aws_secret_access_key=dict_aws['secret_key'])
+                                      aws_secret_access_key=dict_aws['secret_key']
+    )
+
+    # conn = boto.ec2.connect_to_region("dict_a",
+    #                                   aws_access_key_id="AKIAIPID4EFXEK4RHUXA",
+    #                                   aws_secret_access_key="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"
+    # )
 
     if(verbose):
         print 'Connect to region: ' + str(conn)
@@ -106,15 +121,20 @@ def parse_config():
     except KeyError:
         print "Environment variable AWS_CONFIG_FILE not set yet."
         sys.exit(1)
+
+    print 'aws_conf ' + aws_conf
     
     with open(aws_conf) as f:
         for line in f:
             if line.startswith('aws_access_key_id'):
-                dict_aws['key_id'] =  line[line.find('=')+1:]
+                dict_aws['key_id'] =  line[line.find('=')+1:].strip()
+                print "dict_aws['key_id'] " + dict_aws['key_id']
             elif line.startswith('aws_secret_access_key'):
-                dict_aws['secret_key'] = line[line.find('=')+1:]
+                dict_aws['secret_key'] = line[line.find('=')+1:].strip()
+                print "dict_aws['secret_key'] " + dict_aws['secret_key']
             elif line.startswith('region'):
-                dict_aws['region'] =  line[line.find('=')+1:]
+                dict_aws['region'] =  line[line.find('=')+1:].strip()
+                print "dict_aws['region'] " + dict_aws['region']
             else:
                 pass
 
@@ -182,11 +202,10 @@ def connect_attach(volume_id=None):
     key = parse_SSH()
     pub_ip, dest_dev = attach(volume_id)
 
-    worker.mkfs_device(dest_dev, pub_ip, user, key)
-    mnt_path=worker.mount_device(dest_dev, pub_ip, user, key)
+    # worker.mkfs_device(dest_dev, pub_ip, user, key)
+    # mnt_path=worker.mount_device(dest_dev, pub_ip, user, key)
     
-    if ins is not None:
-        ins.terminate()
+    return key, pub_ip, dest_dev
 
 
 if __name__ == '__main__':
@@ -196,16 +215,21 @@ if __name__ == '__main__':
     # key=parse_SSH()
     # ip, dest = attach()
 
-    volume_id, method = UI.interact()
-    connect_attach(volume_id)
+    volume_id, method, src_dir = UI.interact()
+
+    key, pub_ip, dest_dev = connect_attach(volume_id)
     
-    worker.mkfs_device(dest, ip, user, key)
-    mnt_path=worker.mount_device(dest, ip, user, key)
-    print mnt_path
+    # worker.mkfs_device(dest, ip, user, key)
+    # mnt_path=worker.mount_device(dest, ip, user, key)
+
+    worker.mkfs_device(dest_dev, pub_ip, user, key)
+    mnt_path=worker.mount_device(dest_dev, pub_ip, user, key)
+    print "mount path: ", mnt_path
+    print "use method: " + method
     if method == "dd":
-        worker.do_tarNdd('.', mnt_path, ip, 'fedora', key)
+        worker.do_tarNdd(src_dir, mnt_path, pub_ip, user, key)
     else:
-        worker.do_rsync('.', mnt_path, ip, user, key)
+        worker.do_rsync(src_dir, mnt_path, pub_ip, user, key)
     
     if ins is not None:
         ins.terminate()

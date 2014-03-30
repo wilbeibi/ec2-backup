@@ -49,7 +49,7 @@ def interact():
 
 
     if args.method:
-        method = args.method
+        method = ''.join(args.method)
         
     if args.volume_id:
         str_vid = ''.join(args.volume_id)
@@ -66,16 +66,10 @@ def interact():
         usage()
         sys.exit(1)
 
-    return volume_id, method
     
-    # key, pub_ip, dest_
-
-    # worker.mkfs_device(dest_dev, pub_ip, user, key)
-    # mnt_path=worker.mount_device(dest_dev, pub_ip, user, key)
+    return volume_id, method, args.dir
     
-    # worker.terminate()
-    
-
+ 
 
 
 
