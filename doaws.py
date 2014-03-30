@@ -191,19 +191,28 @@ def connect_attach(volume_id=None, src_dir="/"):
 
 if __name__ == '__main__':
 
+    new_volume=0
     volume_id, method, src_dir = UI.interact()
+    if volume_id is None:
+        new_volume=1
 
     key, pub_ip, dest_dev = connect_attach(volume_id, src_dir)
     
-    worker.mkfs_device(dest_dev, pub_ip, user, key)
+    if new_volume:
+        r=worker.mkfs_device(dest_dev, pub_ip, user, key)
+        if r!=0:
+            sys.exit(r)
     mnt_path=worker.mount_device(dest_dev, pub_ip, user, key)
     # print "mount path: ", mnt_path
     # print "use method: " + method
     if method == "dd":
-        worker.do_tarNdd(src_dir, mnt_path, pub_ip, user, key)
+        r=worker.do_tarNdd(src_dir, mnt_path, pub_ip, user, key)
     else:
-        worker.do_rsync(src_dir, mnt_path, pub_ip, user, key)
+        r=worker.do_rsync(src_dir, mnt_path, pub_ip, user, key)
+    if r!=0:
+        sys.exit(r)
     
+    print volume_id
     if ins is not None:
         ins.terminate()
         log.info("instance terminated")
