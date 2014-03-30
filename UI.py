@@ -9,10 +9,23 @@
 Interaction part
 """
 
-import sys
+import sys, os
 import argparse
 import re
+import logging
 
+if 'EC2_BACKUP_VERBOSE' in os.environ:
+    #global verbose
+    verbose = True
+
+log = logging.getLogger('EC2-backup')
+if(verbose):
+    log.setLevel(logging.INFO)
+else:
+    log.setLevel(logging.ERROR)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+log.addHandler(ch)
 
 def usage():
     """
@@ -56,7 +69,7 @@ def interact():
         vol_pat = re.compile(r'vol-[0-9a-f]{8}')
         
         if not vol_pat.match(str_vid):
-            print 'Incorrect volume id format'
+            log.error("Incorrect volume id format")
             sys.exit(1)
     
         volume_id = args.volume_id
