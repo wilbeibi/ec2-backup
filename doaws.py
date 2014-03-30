@@ -12,8 +12,7 @@ import os
 import boto.ec2
 import getopt
 import time
-from UI import log
-verbose = False
+from UI import log, verbose
 ins = None
 user = "fedora"
 
@@ -107,6 +106,7 @@ def parse_config():
         log.info("Environment variable AWS_CONFIG_FILE not set.")
         sys.exit(1)
 
+    aws_conf=worker.get_path(aws_conf)
     with open(aws_conf) as f:
         for line in f:
             if line.startswith('aws_access_key_id'):

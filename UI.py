@@ -14,6 +14,8 @@ import argparse
 import re
 import logging
 
+verbose=False
+
 if 'EC2_BACKUP_VERBOSE' in os.environ:
     #global verbose
     verbose = True

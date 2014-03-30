@@ -1,12 +1,12 @@
 import os, sys
 from subprocess import Popen, PIPE
 from time import gmtime, strftime
+from UI import verbose
 
-from UI import log
-
-
-# devnull=open(os.devnull, 'w')
-devnull=sys.stdout
+if verbose:
+    devnull=sys.stdout
+else:
+    devnull=open(os.devnull, 'w')
  
 def get_path(src):
     if src==None:
@@ -43,7 +43,6 @@ def mkfs_device(dev, rid, user, key=None):
     r=p.wait()
     if r!=0:
         print p.stderr.read()
-    log.info("mkfs done")
     return r
 
 ##
@@ -81,7 +80,6 @@ def mount_device(dev, rid, user, key=None):
     if r!=0:
         print p.stderr.read()
         return ''
-    log.info("mount done")
     return mnt_path
 
 ##
@@ -116,14 +114,11 @@ def do_rsync(src, dest, rid, user, key=None):
     if key!=None:
         args.insert(1, '%s'%(key))
         args.insert(1, '-i')
-
     
     p2=Popen(args, stdout=devnull, stderr=PIPE)
     r=p2.wait()
     if r!=0:
         print p.stderr.read()
-
-    log.info("rsync done")
     return r
 
 ##
@@ -185,7 +180,6 @@ def do_tarNdd(src, dest, rid, user, key=None):
     if r!=0:
         print p3.stderr.read()
     os.remove(tmp_path)
-    log.info("tar & dd done")
     return r
 
 # if __name__ == '__main__':
