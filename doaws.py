@@ -1,10 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
+ 
 # switch == != to is , is not
 # switch '' to ""
 
-
+import UI
 import worker
 import sys
 sys.path.insert(0, '/opt/boto/lib/python2.7/site-packages/boto-2.27.0-py2.7.egg')
@@ -12,12 +12,12 @@ import os
 import boto.ec2
 import getopt
 import time
-key_id = 'AKIAIPID4EFXEK4RHUXA'
-secret_key = '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'
-region = 'us-east-1'
+
 verbose = False
 ins = None
-
+user = "fedora"
+# method = "dd"
+# volume_id = None
 
 dict_ins={'image-id':          'ami-3b361952', # Ubuntu as default
           'instance-type':     't1.micro',
@@ -34,24 +34,24 @@ def attach(volume_id=None):
     Attach volume
     """
     global ins
-
-    conn = boto.ec2.connect_to_region(region,
-                                      aws_access_key_id=key_id,
-                                      aws_secret_access_key=secret_key)
+ 
+    conn = boto.ec2.connect_to_region(dict_aws['region'],
+                                      aws_access_key_id=dict_aws['key_id'],
+                                      aws_secret_access_key=dict_aws['secret_key'])
 
     if(verbose):
-        print 'Connect to region: ' + region
+        print 'Connect to region: ' + str(conn)
 
+    print 'security ' + dict_ins['security-groups']
     reservations = conn.run_instances(
         image_id=dict_ins['image-id'],           
         key_name=dict_ins['key-name'],
         instance_type=dict_ins['instance-type'],
-        security_groups=[dict_ins['security-groups']])
+        security_groups=[dict_ins['security-groups']]
+    )
         
     ins = reservations.instances[0]  # reservations[0]
 
-    # while ins.status is not "running":
-    #     print 'wating for running, current status: ' + str(ins.status)
     status = ins.update()
 
     while status != 'running':
@@ -132,8 +132,6 @@ def parse_AWS():
         print "Environment variable EC2_BACKUP_FLAGS_AWS not set yet."
         sys.exit(1)
     
-#    ins_conf = " --image-id ami-c3b8d6aa --instance-type t1.micro --key-name MyKeyPair --security-groups MySecurityGroup " 
-    
     opts, args = getopt.getopt(ins_conf.split(), "i:t:k:g:", ["image-id=","instance-type=", "key-name=", "security-groups="])
         
     for o, a in opts:
@@ -173,20 +171,41 @@ def parse_SSH():
     else:
         print 'Unrecognized option'
         sys.exit(1)
-  
-    
-if __name__ == '__main__':
-    print 'Start'
+
+def connect_attach(volume_id=None):
+    """
+    perform ec2 connect, create volume and attach
+    """
+
     parse_AWS()
     parse_config()
-    key=parse_SSH()
-    ip, dest = attach()
-    r=worker.mkfs_device(dest, ip, 'fedora', key)
-    print r
-    mnt_path=worker.mount_device(dest, ip, 'fedora', key)
+    key = parse_SSH()
+    pub_ip, dest_dev = attach(volume_id)
+
+    worker.mkfs_device(dest_dev, pub_ip, user, key)
+    mnt_path=worker.mount_device(dest_dev, pub_ip, user, key)
+    
+    if ins is not None:
+        ins.terminate()
+
+
+if __name__ == '__main__':
+    print 'Start'
+    # parse_AWS()
+    # parse_config()
+    # key=parse_SSH()
+    # ip, dest = attach()
+
+    volume_id, method = UI.interact()
+    connect_attach(volume_id)
+    
+    worker.mkfs_device(dest, ip, user, key)
+    mnt_path=worker.mount_device(dest, ip, user, key)
     print mnt_path
-    # r=worker.do_tarNdd('.', mnt_path, ip, 'fedora', key)
-    r=worker.do_rsync('.', mnt_path, ip, 'fedora', key)
-    print r
+    if method == "dd":
+        worker.do_tarNdd('.', mnt_path, ip, 'fedora', key)
+    else:
+        worker.do_rsync('.', mnt_path, ip, user, key)
+    
     if ins is not None:
         ins.terminate()

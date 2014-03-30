@@ -8,14 +8,11 @@
 """
 Interaction part
 """
-__auther__ = "Hongyi Shen"
 
 import sys
 import argparse
 import re
 
-import volume
-import worker
 
 def usage():
     """
@@ -31,8 +28,9 @@ def usage():
     
 
 
-if __name__ == '__main__':
-    
+def interact():
+    method = "dd"
+    volume_id = None
     parser = argparse.ArgumentParser(description='This is a ec2-backup program',
                                  add_help=False) # use customized help
 
@@ -51,7 +49,7 @@ if __name__ == '__main__':
 
 
     if args.method:
-        print "Use method %s" % args.method
+        method = args.method
         
     if args.volume_id:
         str_vid = ''.join(args.volume_id)
@@ -61,11 +59,24 @@ if __name__ == '__main__':
             print 'Incorrect volume id format'
             sys.exit(1)
     
-        print "Use volume id: %s" % args.volume_id
+        volume_id = args.volume_id
+
 
     if args.usage:
         usage()
         sys.exit(1)
+
+    return volume_id, method
+    
+    # key, pub_ip, dest_
+
+    # worker.mkfs_device(dest_dev, pub_ip, user, key)
+    # mnt_path=worker.mount_device(dest_dev, pub_ip, user, key)
+    
+    # worker.terminate()
+    
+
+
 
 
 

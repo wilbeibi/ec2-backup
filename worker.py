@@ -19,6 +19,7 @@ def get_destname(dir):
     return '%s_backup_%s'%(dir, strftime("%d_%b_%Y_%H_%M_%S", gmtime()))
 
 def get_size(path='/'):
+    path = get_path(path)
     p=Popen(['du', '-sb', path], stdout=PIPE, stderr=PIPE)
     r=p.wait()
     if r!=0:
@@ -178,3 +179,6 @@ def do_tarNdd(src, dest, rid, user, key=None):
         print p3.stderr.read()
     os.remove(tmp_path)
     return r
+
+# if __name__ == '__main__':
+#     print get_size('~/Dropbox/Courses/CS615/HW4')
