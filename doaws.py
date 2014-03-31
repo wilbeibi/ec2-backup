@@ -81,7 +81,7 @@ def attach(volume_id=None, src_dir="/"):
     #     print 'Attach volume ' + str(volume_id)
     log.info("attach volume " + str(volume_id))
     dest = "/dev/sdz"
-    
+    print 
     if conn.attach_volume(volume_id, ins.id , dest) == False:
         log.error("Attach failed.")
         sys.exit(1)
@@ -92,7 +92,7 @@ def attach(volume_id=None, src_dir="/"):
     log.info( "Attached volume %s to %s" %(volume_id, dest) )
 
     
-    return ins.ip_address, '/dev/xvdz'
+    return ins.ip_address, '/dev/xvdz', volume_id
     
 
 def parse_config():
@@ -183,10 +183,10 @@ def connect_attach(volume_id=None, src_dir="/"):
     parse_AWS()
     parse_config()
     key = parse_SSH()
-    pub_ip, dest_dev = attach(volume_id, src_dir)
+    pub_ip, dest_dev, vol_id_p = attach(volume_id, src_dir)
 
     
-    return key, pub_ip, dest_dev
+    return key, pub_ip, dest_dev, vol_id_p
 
 
 if __name__ == '__main__':
@@ -196,7 +196,7 @@ if __name__ == '__main__':
     if volume_id is None:
         new_volume=1
 
-    key, pub_ip, dest_dev = connect_attach(volume_id, src_dir)
+    key, pub_ip, dest_dev, vol_id_p = connect_attach(volume_id, src_dir)
     
     if new_volume:
         r=worker.mkfs_device(dest_dev, pub_ip, user, key)
@@ -212,7 +212,7 @@ if __name__ == '__main__':
     if r!=0:
         sys.exit(r)
     
-    print volume_id
+    print vol_id_p
     if ins is not None:
         ins.terminate()
         log.info("instance terminated")

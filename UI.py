@@ -74,14 +74,13 @@ def interact():
             log.error("Incorrect volume id format")
             sys.exit(1)
     
-        volume_id = args.volume_id
+        volume_id = ''.join(args.volume_id)
 
 
     if args.usage:
         usage()
         sys.exit(1)
 
-    
     return volume_id, method, args.dir
     
  
