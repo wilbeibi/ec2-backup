@@ -18,7 +18,7 @@ user = "fedora"
 
 
 
-dict_ins={'image-id':          'ami-3b361952', # Ubuntu as default
+dict_ins={'image-id':          'ami-3b361952', # Fedora as default
           'instance-type':     't1.micro',
           'key-name':          'stevens',
           'security-groups':   'default'}
@@ -65,9 +65,9 @@ def attach(volume_id=None, src_dir="/"):
         
     if volume_id is None:
         conv = 1024*1024*1024
-        sz = worker.get_size(src_dir)
+        sz = 2 * worker.get_size(src_dir)
         sz = int((sz+conv-1)/conv)
-        vol = conn.create_volume(sz*2, ins.placement) # change size
+        vol = conn.create_volume(sz, ins.placement) 
         volume_id = vol.id
         log.info("Create volume: " + str(volume_id))
         
@@ -77,8 +77,6 @@ def attach(volume_id=None, src_dir="/"):
 	    time.sleep(5)
 	    status = vol.update()
 
-    # if(verbose):
-    #     print 'Attach volume ' + str(volume_id)
     log.info("attach volume " + str(volume_id))
     dest = "/dev/sdz"
     print 
